@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetPulse</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: 30px auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 25px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-top: 6px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 20px;
+      background: #2563eb;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .label {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .value {
+      font-size: 25px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .panel-title {
+      padding: 18px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      border-bottom: 1px solid #334155;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+
+    th {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .online {
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .status {
+      padding: 20px;
+      color: #94a3b8;
+    }
+
+    @media (max-width: 700px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+
+    <header>
+      <div>
+        <h1>⚡ NetPulse</h1>
+        <div class="subtitle">LAN Network Monitor</div>
+      </div>
+
+      <button id="scanBtn">Scan Network</button>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <div class="label">Online Devices</div>
+        <div class="value" id="online">—</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Local IP</div>
+        <div class="value" id="localIp">—</div>
+      </div>
+
+      <div class="card">
+        <div class="label">Gateway</div>
+        <div class="value" id="gateway">—</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">Network Devices</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th>Status</th>
+              <th>Latency</th>
+              <th>Hostname</th>
+              <th>MAC</th>
+            </tr>
+          </thead>
+
+          <tbody id="devices">
+            <tr>
+              <td colspan="5" class="status">
+                Press "Scan Network" to begin.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const scanBtn = document.getElementById("scanBtn");
+    const online = document.getElementById("online");
+    const localIp = document.getElementById("localIp");
+    const gateway = document.getElementById("gateway");
+    const devices = document.getElementById("devices");
+
+    async function scanNetwork() {
+      scanBtn.disabled = true;
+      scanBtn.textContent = "Scanning...";
+
+      devices.innerHTML = `
+        <tr>
+          <td colspan="5" class="status">Scanning network...</td>
+        </tr>
+      `;
+
+      try {
+        const response = await fetch("/api/scan");
+
+        if (!response.ok) {
+          throw new Error("Scan failed");
+        }
+
+        const data = await response.json();
+
+        online.textContent = data.online;
+        localIp.textContent = data.local_ip;
+        gateway.textContent = data.gateway;
+
+        devices.innerHTML = "";
+
+        if (data.devices.length === 0) {
+          devices.innerHTML = `
+            <tr>
+              <td colspan="5" class="status">No online devices found.</td>
+            </tr>
+          `;
+          return;
+        }
+
+        data.devices.forEach(device => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${device.ip}</td>
+            <td class="online">● ONLINE</td>
+            <td>${device.latency ?? "—"} ms</td>
+            <td>${device.hostname ?? "—"}</td>
+            <td>${device.mac ?? "—"}</td>
+          `;
+
+          devices.appendChild(row);
+        });
+
+      } catch (error) {
+        devices.innerHTML = `
+          <tr>
+            <td colspan="5" class="status">
+              Unable to connect to NetPulse backend.
+            </td>
+          </tr>
+        `;
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.textContent = "Scan Network";
+      }
+    }
+
+    scanBtn.addEventListener("click", scanNetwork);
+  </script>
+</body>
+</html>
