@@ -1,0 +1,7 @@
+{
+  "network": "192.168.31.0/24",
+  "gateway": "192.168.31.1",
+  "max_workers": 16,
+  "ping_timeout": 1,
+  "live_interval": 5
+}
